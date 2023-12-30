@@ -1,0 +1,63 @@
+plugins {
+    id 'java'
+
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'java-library'
+    id 'maven-publish'
+}
+
+// Encode to UTF-8
+compileJava.options.encoding = 'UTF-8'
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+group 'fr.d0gma'
+version '0.1-SNAPSHOT'
+
+repositories {
+    mavenLocal()
+
+    maven {
+        url = 'https://oss.sonatype.org/content/groups/public/'
+    }
+
+    maven {
+        url = 'https://repo.maven.apache.org/maven2'
+    }
+
+    maven {
+        url = 'https://repo.xenondevs.xyz/releases'
+    }
+
+    maven {
+        url = 'https://oss.sonatype.org/content/repositories/snapshots/'
+    }
+
+    maven {
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+
+    mavenCentral()
+}
+
+dependencies {
+    implementation "xyz.xenondevs.invui:invui:1.24"
+    implementation 'me.catcoder:bukkit-sidebar:6.2.5-SNAPSHOT'
+    implementation 'io.projectreactor:reactor-core:3.4.24'
+    implementation 'org.reflections:reflections:0.9.12'
+
+    compileOnly "io.papermc.paper:paper-api:1.20.1-R0.1-SNAPSHOT"
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.9.0'
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'fr.d0gma'
+            artifactId = 'd0gmaCore'
+            version = '0.1-SNAPSHOT'
+
+            from components.java
+        }
+    }
+}
