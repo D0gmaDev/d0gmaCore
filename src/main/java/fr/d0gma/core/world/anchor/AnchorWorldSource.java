@@ -1,5 +1,6 @@
 package fr.d0gma.core.world.anchor;
 
+import fr.d0gma.core.Core;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
@@ -15,14 +16,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 public class AnchorWorldSource implements AnchorSource {
 
     private static final String INVALID_NAME = "#tobedeleted";
     private static final EntityType MARKER_TYPE = EntityType.MARKER;
-
-    private static final Logger logger = Bukkit.getLogger();
 
     private final String worldName;
     private final Map<String, List<Anchor>> anchors = new HashMap<>();
@@ -73,7 +71,7 @@ public class AnchorWorldSource implements AnchorSource {
             int chunkY = Integer.parseInt(parameters[2]) / 16;
             int radius = parameters.length >= 4 ? Integer.parseInt(parameters[3]) : 3;
 
-            logger.info("[GAME-Anchor-AS] #load armor stand (" + chunkX + "," + chunkY + "," + radius + ")");
+            Core.getPlugin().getLogger().info("[GAME-Anchor-AS] #load armor stand (" + chunkX + "," + chunkY + "," + radius + ")");
 
             for (int cx = chunkX - radius / 2; cx < chunkX + radius / 2; cx++) {
                 for (int cy = chunkY - radius / 2; cy < chunkY + radius / 2; cy++) {
@@ -95,7 +93,7 @@ public class AnchorWorldSource implements AnchorSource {
                 .filter(entity -> !entity.getName().equals(INVALID_NAME))
                 .forEach(entity -> {
                     Anchor anchor = createAnchorFromEntity(entity);
-                    logger.info("[GAME-Anchor-AS] Stored " + anchor);
+                    Core.getPlugin().getLogger().info("[GAME-Anchor-AS] Stored " + anchor);
 
                     if (!anchors.containsKey(anchor.key())) {
                         anchors.put(anchor.key(), new ArrayList<>());

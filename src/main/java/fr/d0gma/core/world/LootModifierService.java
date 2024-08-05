@@ -33,7 +33,7 @@ public class LootModifierService {
     public static void applyLootModifiers(BlockBreakEvent event) {
         boolean modified = false;
 
-        List<ItemStack> drops = event.getBlock().getDrops(event.getPlayer().getItemInUse()).stream().toList();
+        List<ItemStack> drops = event.getBlock().getDrops(event.getPlayer().getActiveItem()).stream().toList();
 
         for (PriorityObject<LootModifier> priorityObject : lootModifierList) {
             if (!priorityObject.allowBlockPlaced() && !event.getBlock().getMetadata("dropped").isEmpty()) {
