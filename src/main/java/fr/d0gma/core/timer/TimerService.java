@@ -32,8 +32,8 @@ public class TimerService {
     }
 
     public static Timer registerValueTimer(String key, long step, Long stop, TimeUnit timeUnit, LongConsumer runOnTick, LongConsumer runOnEnd) {
-        Consumer<Timer> timerRunOnTick = runOnTick != null ? timer -> runOnTick.accept(timer.getValue()) : null;
-        Consumer<Timer> timerRunOnEnd = runOnEnd != null ? timer -> runOnEnd.accept(timer.getValue()) : null;
+        Consumer<Timer> timerRunOnTick = runOnTick != null ? timer -> runOnTick.accept(timer.getCurrentValue()) : null;
+        Consumer<Timer> timerRunOnEnd = runOnEnd != null ? timer -> runOnEnd.accept(timer.getCurrentValue()) : null;
 
         return registerTimer(key, Duration.of(step, timeUnit.toChronoUnit()), stop != null ? Duration.of(stop, timeUnit.toChronoUnit()) : null, timerRunOnTick, timerRunOnEnd);
     }

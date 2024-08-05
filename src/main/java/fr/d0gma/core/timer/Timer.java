@@ -1,6 +1,6 @@
 package fr.d0gma.core.timer;
 
-import reactor.core.publisher.Flux;
+import java.time.Duration;
 
 /**
  * Represents a timer.
@@ -17,6 +17,13 @@ public interface Timer {
     String getKey();
 
     /**
+     * Gets the current status of the timer.
+     *
+     * @return the status
+     */
+    Status getStatus();
+
+    /**
      * Starts the timer.
      */
     void start();
@@ -24,7 +31,22 @@ public interface Timer {
     /**
      * Pauses the timer.
      */
-    void stop();
+    void pause();
+
+    /**
+     * Resumes the timer if it is currently paused.
+     */
+    void resume();
+
+    /**
+     * Cancels the timer.
+     */
+    void cancel();
+
+    /**
+     * Ends the timer.
+     */
+    void forceEnd();
 
     /**
      * Returns the current value of the timer in an increasing format.
@@ -35,7 +57,7 @@ public interface Timer {
 
     /**
      * Returns the current value of the timer in a decreasing format,
-     * meaning {@link #getMaxValue() max} - {@link #getValue() current}.
+     * meaning {@link #getMaxValue() max} - {@link #getCurrentValue() current}.
      * If the timer has no maximum, the infinity symbol (U+221E) is returned.
      *
      * @return The formatted value of the timer in a decreasing format.
@@ -43,34 +65,11 @@ public interface Timer {
     String getDecreasingFormattedValue();
 
     /**
-     * Returns a Flux that emits this timer on each tick.
-     *
-     * @return A Flux that emits this timer on each tick.
-     */
-    Flux<Timer> onTick();
-
-    /**
-     * Adds a task to be executed when the timer ends.
-     * End tasks are not called if the timer is {@link #stop() stopped} manually.
-     *
-     * @param consumer The task to be executed when the timer ends.
-     */
-    void addEndTask(Runnable consumer);
-
-    /**
      * Sets the value of the timer to the specified value.
      *
      * @param value The new value of the timer.
      */
     void setValue(long value);
-
-    /**
-     * Returns the current value of the timer. The value is in arbitrary unit,
-     * more precisely it equals the number of time that the timer loop has been run.
-     *
-     * @return The current value of the timer
-     */
-    long getValue();
 
     /**
      * Returns the maximum value of the timer, or {@link Long#MAX_VALUE} if
@@ -81,11 +80,11 @@ public interface Timer {
     long getMaxValue();
 
     /**
-     * Returns true if the timer has ended.
+     * Returns the current value of the timer.
      *
-     * @return True if the timer has ended, false otherwise
+     * @return the current value of the timer
      */
-    boolean isEnded();
+    long getCurrentValue();
 
     /**
      * Sets the maximum value of the timer to the specified value.
@@ -95,7 +94,31 @@ public interface Timer {
     void setMaxValue(long value);
 
     /**
-     * Resets the timer to the beginning. Sets {@link #isEnded()} to false.
+     * Returns the maximum duration of the timer.
+     *
+     * @return the maximum duration of the timer
+     */
+    Duration getMaxDuration();
+
+    /**
+     * Returns the current duration of the timer.
+     *
+     * @return the current duration of the timer
+     */
+    Duration getCurrentDuration();
+
+    /**
+     * Resets the timer to the beginning.
+     * Sets the status to {@link Status#UNSTARTED}.
      */
     void reset();
+
+    enum Status {
+
+        UNSTARTED,
+        RUNNING,
+        PAUSED,
+        CANCELED,
+        ENDED
+    }
 }

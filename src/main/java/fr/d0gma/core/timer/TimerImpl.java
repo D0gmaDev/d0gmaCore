@@ -1,17 +1,13 @@
 package fr.d0gma.core.timer;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
-import reactor.core.publisher.Sinks.EmitFailureHandler;
-import reactor.core.publisher.Sinks.Many;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
+import fr.d0gma.core.Core;
 
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.TimerTask;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+
+import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
 class TimerImpl implements Timer {
 
@@ -21,18 +17,15 @@ class TimerImpl implements Timer {
 
     private final String key;
     private final Duration step;
-    private Long stop; // can be null for endless timers
+    private long stop;
 
     private final Consumer<Timer> runOnTick;
     private final Consumer<Timer> runOnEnd;
 
-    private final Many<Timer> timerMany;
-    private final Scheduler scheduler;
-    private final List<Runnable> endTasks = new ArrayList<>();
-
+    private Status status = Status.UNSTARTED;
     private long value = 0L;
-    private java.util.Timer timer;
-    private boolean ended = false;
+
+    private ScheduledExecutorService executorService;
 
     public TimerImpl(String key, Duration step, Duration stop, Consumer<Timer> runOnTick, Consumer<Timer> runOnEnd) {
         if (step == null || step.isZero() || step.isNegative()) {
@@ -41,13 +34,10 @@ class TimerImpl implements Timer {
 
         this.key = key;
         this.step = step;
-        this.stop = stop != null ? stop.dividedBy(step) : null;
+        this.stop = stop != null ? stop.dividedBy(step) : Long.MAX_VALUE;
 
         this.runOnTick = runOnTick;
         this.runOnEnd = runOnEnd;
-
-        this.timerMany = Sinks.many().replay().limit(Duration.ofSeconds(1));
-        this.scheduler = Schedulers.boundedElastic();
     }
 
     @Override
@@ -56,57 +46,105 @@ class TimerImpl implements Timer {
     }
 
     @Override
-    public void start() {
-        if (timer != null) {
-            throw new IllegalStateException("the timer is already running.");
-        }
-
-        Timer instance = this;
-
-        this.timer = new java.util.Timer();
-        this.timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-
-                value++;
-
-                if (runOnTick != null) {
-                    runOnTick.accept(instance);
-                }
-
-                timerMany.emitNext(instance, EmitFailureHandler.FAIL_FAST);
-
-                if (stop != null && value >= stop) {
-                    ended = true;
-                    timer.cancel();
-                    if (runOnEnd != null) {
-                        runOnEnd.accept(instance);
-                    }
-                    endTasks.forEach(Runnable::run);
-                    timer = null;
-                }
-            }
-        }, this.step.toMillis(), this.step.toMillis());
+    public Status getStatus() {
+        return this.status;
     }
 
     @Override
-    public void stop() {
-        if (timer == null) {
-            throw new IllegalStateException("the timer is not running.");
+    public void start() {
+
+        if (this.status == Status.PAUSED) {
+            resume();
+            return;
         }
 
-        this.timer.cancel();
+        if (this.status != Status.UNSTARTED) {
+            return;
+        }
+
+        this.executorService = newSingleThreadScheduledExecutor(r -> Thread.ofVirtual().unstarted(r));
+
+        Runnable task = () -> {
+
+            if (this.status == Status.PAUSED) {
+                return;
+            }
+
+            if (this.status == Status.RUNNING && this.value >= this.stop) {
+                this.status = Status.ENDED;
+            }
+
+            if (this.status != Status.RUNNING) {
+                executorService.shutdownNow();
+
+                if (this.status == Status.ENDED && this.runOnEnd != null) {
+                    try {
+                        this.runOnEnd.accept(this);
+                    } catch (Exception e) {
+                        Core.getPlugin().getLogger().severe("Error while running timer end task : " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+                return;
+            }
+
+            value++;
+
+            if (this.runOnTick != null) {
+                try {
+                    runOnTick.accept(this);
+                } catch (Exception e) {
+                    Core.getPlugin().getLogger().severe("Error while running timer: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+        };
+
+        this.status = Status.RUNNING;
+        executorService.scheduleAtFixedRate(task, 0L, this.step.toMillis(), TimeUnit.MILLISECONDS);
+    }
+
+    @Override
+    public void pause() {
+        if (this.status == Status.RUNNING) {
+            this.status = Status.PAUSED;
+        }
+    }
+
+    @Override
+    public void resume() {
+        if (this.status == Status.PAUSED) {
+            this.status = Status.RUNNING;
+        }
+    }
+
+    @Override
+    public void cancel() {
+        if (this.status == Status.RUNNING || this.status == Status.PAUSED) {
+            this.status = Status.CANCELED;
+            executorService.shutdownNow();
+        }
+    }
+
+    @Override
+    public void forceEnd() {
+        if (this.status == Status.RUNNING || this.status == Status.PAUSED) {
+            this.status = Status.ENDED;
+            executorService.shutdownNow();
+            if (this.runOnEnd != null) {
+                this.runOnEnd.accept(this);
+            }
+        }
     }
 
     @Override
     public String getIncreasingFormattedValue() {
-        Duration duration = this.step.multipliedBy(this.value);
-        return formatDuration(duration);
+        return formatDuration(getCurrentDuration());
     }
 
     @Override
     public String getDecreasingFormattedValue() {
-        if (this.stop == null) {
+        if (this.stop == Long.MAX_VALUE) {
             return "∞";
         }
 
@@ -130,54 +168,39 @@ class TimerImpl implements Timer {
     }
 
     @Override
-    public Flux<Timer> onTick() {
-        return this.timerMany.asFlux().publishOn(this.scheduler);
-    }
-
-    @Override
-    public void addEndTask(Runnable consumer) {
-        this.endTasks.add(consumer);
-    }
-
-    @Override
-    public void setValue(long l) {
-        this.value = l;
+    public void setValue(long value) {
+        this.value = value;
     }
 
     @Override
     public long getMaxValue() {
-        return this.stop != null ? this.stop : Long.MAX_VALUE;
+        return this.stop;
     }
 
     @Override
-    public boolean isEnded() {
-        return this.ended;
-    }
-
-    @Override
-    public long getValue() {
+    public long getCurrentValue() {
         return this.value;
     }
 
     @Override
-    public void setMaxValue(long value) {
-        this.stop = value == Long.MAX_VALUE ? null : value;
+    public void setMaxValue(long stop) {
+        this.stop = stop;
+    }
+
+    @Override
+    public Duration getMaxDuration() {
+        return this.stop == Long.MAX_VALUE ? Duration.ZERO : this.step.multipliedBy(this.stop);
+    }
+
+    @Override
+    public Duration getCurrentDuration() {
+        return this.step.multipliedBy(this.value);
     }
 
     @Override
     public void reset() {
+        this.cancel();
         this.value = 0L;
-        this.ended = false;
-    }
-
-    @Override
-    public String toString() {
-        return "TimerImpl{" +
-                "key='" + key + '\'' +
-                ", step=" + step +
-                ", stop=" + stop +
-                ", value=" + value +
-                ", ended=" + ended +
-                '}';
+        this.status = Status.UNSTARTED;
     }
 }

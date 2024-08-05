@@ -84,11 +84,12 @@ public class TimeUtils {
             return "∅";
         }
 
-        List<String> parts = new ArrayList<>(4);
+        List<String> parts = new ArrayList<>(5);
         appendIfNonZero(parts, (int) duration.toDaysPart(), "j");
         appendIfNonZero(parts, duration.toHoursPart(), "h");
         appendIfNonZero(parts, duration.toMinutesPart(), "m");
         appendIfNonZero(parts, duration.toSecondsPart(), "s");
+        appendIfNonZero(parts, duration.toMillisPart(), "ms");
 
         return String.join(" ", parts);
     }
