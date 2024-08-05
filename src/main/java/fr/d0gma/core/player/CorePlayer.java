@@ -10,7 +10,7 @@ public interface CorePlayer<T extends CorePlayer<T>> {
 
     Player getPlayer();
 
-    UUID getUuid();
+    UUID getUniqueId();
 
     String getPlayerName();
 
