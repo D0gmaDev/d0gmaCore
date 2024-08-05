@@ -1,6 +1,6 @@
 package fr.d0gma.core.world.schematic;
 
-import fr.d0gma.core.world.Axis;
+import org.bukkit.Axis;
 import org.bukkit.Location;
 import org.bukkit.block.structure.StructureRotation;
 import org.bukkit.entity.Entity;

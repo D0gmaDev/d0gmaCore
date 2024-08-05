@@ -4,9 +4,9 @@ import fr.d0gma.core.nbt.NBTReader;
 import fr.d0gma.core.nbt.type.NBTCompound;
 import fr.d0gma.core.nbt.type.NBTList;
 import fr.d0gma.core.nbt.type.TagType;
-import fr.d0gma.core.world.Axis;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import org.bukkit.Axis;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -61,9 +61,8 @@ class SchematicLoader {
         int entitiesSize = entitiesList != null ? entitiesList.size() : 0;
 
         SchematicEntityData[] entities = new SchematicEntityData[entitiesSize];
-        for (int i = 0; i < entitiesSize; i++) {
+        for (int i = 0; i < entitiesSize; i++)
             entities[i] = parseEntity(length, height, width, offset, entitiesList.getCompound(i));
-        }
 
         inputStream.close();
 
@@ -96,7 +95,6 @@ class SchematicLoader {
         return Optional.ofNullable(Material.matchMaterial(materialName)).orElseThrow(() -> new SchematicParseException("match failed: " + materialName));
     }
 
-    @SuppressWarnings("deprecation")
     private EntityType getEntityTypeOrThrow(String entityTypeName) {
         return Optional.ofNullable(EntityType.fromName(entityTypeName.replaceFirst("minecraft:", ""))).orElseThrow(() -> new SchematicParseException("entitytype fromName failed: " + entityTypeName));
     }
@@ -182,9 +180,8 @@ class SchematicLoader {
         @Override
         public SchematicEntityData rotate(StructureRotation rotation) {
 
-            if (rotation == StructureRotation.NONE) {
+            if (rotation == StructureRotation.NONE)
                 return this;
-            }
 
             int quart = switch (rotation) {
                 case CLOCKWISE_90 -> 3;

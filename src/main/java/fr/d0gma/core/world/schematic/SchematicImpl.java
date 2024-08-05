@@ -1,6 +1,8 @@
 package fr.d0gma.core.world.schematic;
 
-import fr.d0gma.core.world.Axis;
+import fr.d0gma.core.world.schematic.PasteArgument.OnBlockPlace;
+import fr.d0gma.core.world.schematic.PasteArgument.OnEntitySpawn;
+import org.bukkit.Axis;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -9,6 +11,8 @@ import org.bukkit.entity.Entity;
 
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.Consumer;
 
 record SchematicImpl(int version, short height, short width, short length, SchematicBlockData[] blocksData,
@@ -26,54 +30,55 @@ record SchematicImpl(int version, short height, short width, short length, Schem
 
     @Override
     public void paste(Location location) {
-        paste(location, SchematicPasteSpec.create());
+        paste(location, Set.of());
     }
 
     @Override
     public void paste(Location location, Consumer<Block> blockConsumer) {
-        paste(location, SchematicPasteSpec.create().onBlockPlace(blockConsumer));
+        paste(location, Set.of(new OnBlockPlace(blockConsumer)));
     }
 
     @Override
-    public void paste(Location location, Consumer<Block> blockConsumer, boolean withEntities) {
-        paste(location, SchematicPasteSpec.create().onBlockPlace(blockConsumer).withEntities(withEntities));
+    public void pasteWithoutEntities(Location location, Consumer<Block> blockConsumer) {
+        paste(location, Set.of(new OnBlockPlace(blockConsumer), PasteArgument.Flag.IGNORE_ENTITIES));
     }
 
     @Override
-    public void paste(Location location, Consumer<Block> blockConsumer, boolean withEntities, Consumer<Entity> entityConsumer) {
-        paste(location, SchematicPasteSpec.create().onBlockPlace(blockConsumer).withEntities(withEntities).onEntitySpawn(entityConsumer));
+    public void paste(Location location, Consumer<Block> blockConsumer, Consumer<Entity> entityConsumer) {
+        paste(location, Set.of(new OnBlockPlace(blockConsumer), new OnEntitySpawn(entityConsumer)));
     }
 
     @Override
-    public void paste(Location location, SchematicPasteSpec schematicPasteSpec) {
+    public void paste(Location location, Set<PasteArgument> pasteArguments) {
         World world = location.getWorld();
+
+        boolean ignoreAir = pasteArguments.contains(PasteArgument.Flag.IGNORE_AIR);
+        boolean ignoreEntities = pasteArguments.contains(PasteArgument.Flag.IGNORE_ENTITIES);
+
+        Optional<Consumer<Block>> placeConsumer = PasteArgument.placeConsumer(pasteArguments);
+        Optional<Consumer<Entity>> spawnConsumer = PasteArgument.spawnConsumer(pasteArguments);
 
         int widthTimesLength = width * length;
 
-        int x = 0;
-        while (x < width) {
-            int y = 0;
-            while (y < height) {
-                int z = 0;
-                while (z < length) {
-                    int index = y * widthTimesLength + z * width + x;
+        for (int x = 0; x < width; ++x) {
+            for (int y = 0; y < height; ++y) {
+                int yStride = y * widthTimesLength;
+                for (int z = 0; z < length; ++z) {
+                    int zStride = z * width;
+                    int index = yStride + zStride + x;
                     short blockId = blocks[index];
 
-                    if ((schematicPasteSpec.doesPasteAir() || blockId != airData)) {
+                    if (!ignoreAir || blockId != airData) {
                         Location blockLocation = new Location(world, (double) x + location.getX(), (double) y + location.getY(), (double) z + location.getZ());
                         blocksData[blockId].paste(blockLocation);
-                        schematicPasteSpec.getBlockPlaceConsumer().ifPresent(blockConsumer -> blockConsumer.accept(blockLocation.getBlock()));
+                        placeConsumer.ifPresent(blockConsumer -> blockConsumer.accept(blockLocation.getBlock()));
                     }
-                    ++z;
                 }
-                ++y;
             }
-            ++x;
         }
 
-        /* Summon entities */
-        if (schematicPasteSpec.doesSpawnEntities()) {
-            schematicPasteSpec.getEntitySpawnConsumer().ifPresentOrElse(
+        if (!ignoreEntities) {
+            spawnConsumer.ifPresentOrElse(
                     entityConsumer -> Arrays.stream(entitiesData).map(entityData -> entityData.summon(location)).forEach(entityConsumer),
                     () -> Arrays.stream(entitiesData).forEach(entityData -> entityData.summon(location))
             );
@@ -94,14 +99,15 @@ record SchematicImpl(int version, short height, short width, short length, Schem
             default -> throw new IllegalStateException("Unexpected value: " + rotation);
         };
 
+        int widthTimesLength = width * length;
         short[] newBlocks = new short[blocks.length];
 
         for (int i = 0; i < blocks.length; i++) {
-            int y = i / (width * length);
-            int z = (i - y * width * length) / width;
-            int x = i - y * width * length - z * width;
-            int[] newCoords = getRotationNewCoords(width, length, x, z, quart);
-            int newId = y * width * length + newCoords[1] * (quart % 2 == 0 ? width : length) + newCoords[0];
+            int y = i / widthTimesLength;
+            int z = (i - y * widthTimesLength) / width;
+            int x = i - y * widthTimesLength - z * width;
+            var newCoords = getRotationNewCoords(width, length, x, z, quart);
+            int newId = y * width * length + newCoords.y() * (quart % 2 == 0 ? width : length) + newCoords.x();
             newBlocks[newId] = blocks[i];
         }
 
@@ -178,8 +184,11 @@ record SchematicImpl(int version, short height, short width, short length, Schem
         return new SchematicImpl(version, height, width, length, newBlocksData, newEntitiesData, newBlocks, airData);
     }
 
-    private int[] getRotationNewCoords(int width, int length, int x, int z, int quart) {
+    private record Coords2D(int x, int y) {
+    }
+
+    private Coords2D getRotationNewCoords(int width, int length, int x, int z, int quart) {
         int[] coords = new int[]{x, z, width - 1 - x, length - 1 - z};
-        return new int[]{coords[quart % 4], coords[(quart + 1) % 4]};
+        return new Coords2D(coords[quart % 4], coords[(quart + 1) % 4]);
     }
 }
