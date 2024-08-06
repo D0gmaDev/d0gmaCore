@@ -3,19 +3,21 @@ package fr.d0gma.core.timer;
 import fr.d0gma.core.Core;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static java.util.concurrent.Executors.newSingleThreadScheduledExecutor;
 
-class TimerImpl implements Timer {
+final class TimerImpl implements Timer {
 
     private static final String HOURS_DATE_FORMAT = "%02dh %02dm %02ds";
     private static final String MINUTES_DATE_FORMAT = "%02dm %02ds";
     private static final String SECONDS_DATE_FORMAT = "%02ds";
 
     private final String key;
+
     private final Duration step;
     private long stop;
 
@@ -202,5 +204,42 @@ class TimerImpl implements Timer {
         this.cancel();
         this.value = 0L;
         this.status = Status.UNSTARTED;
+    }
+
+    @Override
+    public boolean isStarted() {
+        return this.status != Status.UNSTARTED;
+    }
+
+    @Override
+    public boolean isEnded() {
+        return this.status == Status.ENDED || this.status == Status.CANCELED;
+    }
+
+    @Override
+    public String toString() {
+        return "TimerImpl{" +
+               "key=" + key +
+               ", status=" + status +
+               ", value=" + value +
+               ", step=" + step +
+               ", stop=" + stop +
+               '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof TimerImpl timer)) {
+            return false;
+        }
+        return Objects.equals(this.key, timer.key);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(this.key);
     }
 }

@@ -38,26 +38,26 @@ public class ValueService {
 
 
     public static <T extends Number & Comparable<T>> NumericValue<T> createNumericValue(String nameKey, String descriptionKey, T defaultValue, T minValue, T maxValue, T smallStep, T mediumStem, T largeStep) {
-        return new NumericValue<>(nameKey, descriptionKey, defaultValue, minValue, maxValue, smallStep, mediumStem, largeStep);
+        return new NumericValueImpl<>(nameKey, descriptionKey, defaultValue, minValue, maxValue, smallStep, mediumStem, largeStep);
     }
 
 
     public static BooleanValue createBooleanValue(String nameKey, String trueDescriptionKey, String falseDescriptionKey, boolean defaultValue) {
-        return new BooleanValue(nameKey, trueDescriptionKey, falseDescriptionKey, defaultValue);
+        return new BooleanValueImpl(nameKey, trueDescriptionKey, falseDescriptionKey, defaultValue);
     }
 
 
     public static TimeValue createTimeValue(String nameKey, String descriptionKey, long defaultValue, long minValue, long maxValue, long smallStep, long mediumStem, long largeStep, TimeUnit timeUnit) {
-        return new TimeValue(nameKey, descriptionKey, defaultValue, minValue, maxValue, smallStep, mediumStem, largeStep, timeUnit);
+        return new TimeValueImpl(nameKey, descriptionKey, defaultValue, minValue, maxValue, smallStep, mediumStem, largeStep, timeUnit);
     }
 
 
     public static <T extends Enum<T>> EnumValue<T> createEnumValue(String nameKey, Class<T> enumerationClass, T defaultValue, String... descriptionKeys) {
-        return new EnumValue<>(nameKey, enumerationClass, defaultValue, descriptionKeys);
+        return new EnumValueImpl<>(nameKey, enumerationClass, defaultValue, descriptionKeys);
     }
 
     public static StringValue createStringValue(String nameKey, String descriptionKey, String defaultValue, int minLength, int maxLength) {
-        return new StringValue(nameKey, descriptionKey, defaultValue, minLength, maxLength);
+        return new StringValueImpl(nameKey, descriptionKey, defaultValue, minLength, maxLength);
     }
 
     public static <T extends Number & Comparable<T>> Optional<NumericValue<T>> getNumericValue(Class<T> numericType, String key) {

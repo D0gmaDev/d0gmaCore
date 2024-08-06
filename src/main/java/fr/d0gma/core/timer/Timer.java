@@ -7,7 +7,7 @@ import java.time.Duration;
  *
  * @see TimerService
  */
-public interface Timer {
+public sealed interface Timer permits TimerImpl {
 
     /**
      * Gets the key of the timer.
@@ -112,6 +112,10 @@ public interface Timer {
      * Sets the status to {@link Status#UNSTARTED}.
      */
     void reset();
+
+    boolean isStarted();
+
+    boolean isEnded();
 
     enum Status {
 

@@ -6,21 +6,24 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-public abstract sealed class Value<T> implements GeneralValue<T> permits BooleanValue, EnumValue, NumericValue, StringValue {
+abstract sealed class ValueBase<T> permits BooleanValueImpl, EnumValueImpl, NumericValueImpl, StringValueImpl {
 
-    private final List<IOnValueChanged<T>> subscribers = new ArrayList<>();
+    private final List<OnValueChanged<T>> subscribers = new ArrayList<>();
     private final List<ValueRestriction<T>> restrictions = new ArrayList<>();
 
-    @Override
-    public IOnValueChanged<T> subscribeOnValueChanged(IOnValueChanged<T> sub) {
+    //@Override
+    public abstract T getValue();
+
+    //@Override
+    public OnValueChanged<T> subscribeOnValueChanged(OnValueChanged<T> sub) {
         if (!subscribers.contains(sub)) {
             subscribers.add(sub);
         }
         return sub;
     }
 
-    @Override
-    public boolean unsubscribeOnValueChanged(IOnValueChanged<T> sub) {
+    //@Override
+    public boolean unsubscribeOnValueChanged(OnValueChanged<T> sub) {
         return subscribers.remove(sub);
     }
 
@@ -30,31 +33,31 @@ public abstract sealed class Value<T> implements GeneralValue<T> permits Boolean
             return;
         }
 
-        for (IOnValueChanged<T> sub : subscribers) {
+        for (OnValueChanged<T> sub : subscribers) {
             sub.valueChanged(oldValue, newValue);
         }
     }
 
-    @Override
+    //@Override
     public ValueRestriction<T> addRestriction(RestrictionType type, T value) {
         ValueRestriction<T> restriction = new ValueRestriction<>(UUID.randomUUID(), type, value);
         addRestriction(restriction);
         return restriction;
     }
 
-    @Override
+    //@Override
     public void addRestriction(ValueRestriction<T> restriction) {
         if (canApply(restriction) && !restrictions.contains(restriction)) {
             restrictions.add(restriction);
         }
     }
 
-    @Override
+    //@Override
     public void removeRestriction(ValueRestriction<T> restriction) {
         restrictions.remove(restriction);
     }
 
-    @Override
+    //@Override
     public boolean canApply(ValueRestriction<T> restriction) {
         if (restriction.type().equals(RestrictionType.LOCKED_VALUE)) {
             return !isLocked() || Objects.equals(restriction.value(), getValue());
@@ -63,7 +66,7 @@ public abstract sealed class Value<T> implements GeneralValue<T> permits Boolean
         return true;
     }
 
-    @Override
+    //@Override
     public boolean isLocked() {
         return restrictions.stream().anyMatch(restriction -> restriction.isType(RestrictionType.LOCKED_VALUE));
     }

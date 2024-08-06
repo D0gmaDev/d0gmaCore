@@ -1,11 +1,12 @@
 package fr.d0gma.core.timer;
 
-import fr.d0gma.core.value.ITimeValue;
+import fr.d0gma.core.value.TimeValue;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
@@ -14,8 +15,12 @@ public class TimerService {
 
     private static final Map<String, Timer> TIMERS = new HashMap<>();
 
-    public static Timer createTimer(String key, Duration step, Duration stop, Consumer<Timer> runOnTick, Consumer<Timer> runOnEnd) {
+    private static Timer createTimer(String key, Duration step, Duration stop, Consumer<Timer> runOnTick, Consumer<Timer> runOnEnd) {
         return new TimerImpl(key, step, stop, runOnTick, runOnEnd);
+    }
+
+    public static Timer createTimer(Duration step, Duration stop, Consumer<Timer> runOnTick, Consumer<Timer> runOnEnd) {
+        return createTimer(UUID.randomUUID().toString(), step, stop, runOnTick, runOnEnd);
     }
 
     public static Timer registerTimer(String key, Duration step, Duration stop, Consumer<Timer> runOnTick, Consumer<Timer> runOnEnd) {
@@ -38,7 +43,7 @@ public class TimerService {
         return registerTimer(key, Duration.of(step, timeUnit.toChronoUnit()), stop != null ? Duration.of(stop, timeUnit.toChronoUnit()) : null, timerRunOnTick, timerRunOnEnd);
     }
 
-    public static Timer registerTimerFromTimeValue(String key, ITimeValue step, ITimeValue stop, Consumer<Timer> runOnTick, Consumer<Timer> runOnEnd) {
+    public static Timer registerTimerFromTimeValue(String key, TimeValue step, TimeValue stop, Consumer<Timer> runOnTick, Consumer<Timer> runOnEnd) {
         Duration stopDuration = stop != null ? stop.toDuration() : null;
         return registerTimer(key, step.toDuration(), stopDuration, runOnTick, runOnEnd);
     }

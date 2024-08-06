@@ -1,6 +1,6 @@
 package fr.d0gma.core.value;
 
-public sealed interface GeneralValue<T> extends Restrictible<T> permits IBooleanValue, IEnumValue, INumericValue, IStringValue, Value {
+public sealed interface GeneralValue<T> extends Restrictible<T> permits BooleanValue, EnumValue, NumericValue, StringValue {
 
     String getNameKey();
 
@@ -14,8 +14,8 @@ public sealed interface GeneralValue<T> extends Restrictible<T> permits IBoolean
 
     void reset();
 
-    IOnValueChanged<T> subscribeOnValueChanged(IOnValueChanged<T> onChanged);
+    OnValueChanged<T> subscribeOnValueChanged(OnValueChanged<T> onChanged);
 
-    boolean unsubscribeOnValueChanged(IOnValueChanged<T> onChanged);
+    boolean unsubscribeOnValueChanged(OnValueChanged<T> onChanged);
 
 }
