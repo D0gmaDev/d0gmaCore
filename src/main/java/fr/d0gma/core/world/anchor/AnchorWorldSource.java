@@ -5,13 +5,14 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ import java.util.Optional;
 
 public class AnchorWorldSource implements AnchorSource {
 
-    private static final String INVALID_NAME = "#tobedeleted";
+    private static final NamespacedKey LOADED_KEY = new NamespacedKey("anchor", "marker-loaded");
     private static final EntityType MARKER_TYPE = EntityType.MARKER;
 
     private final String worldName;
@@ -34,12 +35,12 @@ public class AnchorWorldSource implements AnchorSource {
 
     @Override
     public Optional<Anchor> findOne(String key) {
-        return Optional.ofNullable(anchors.get(key)).filter(list -> !list.isEmpty()).map(list -> list.get(0));
+        return Optional.ofNullable(anchors.get(key)).filter(list -> !list.isEmpty()).map(List::getFirst);
     }
 
     @Override
     public List<Anchor> findMany(String key) {
-        return Optional.ofNullable(anchors.get(key)).map(Collections::unmodifiableList).orElse(List.of());
+        return Optional.ofNullable(anchors.get(key)).map(List::copyOf).orElse(List.of());
     }
 
     @Override
@@ -53,14 +54,14 @@ public class AnchorWorldSource implements AnchorSource {
 
     private void triggerLoads(World world) {
         List<Entity> entityList = worldFindLoad(world);
-        if (entityList.size() == 0) {
+        if (entityList.isEmpty()) {
             return;
         }
 
         boolean newlyLoaded = false;
 
         for (Entity entity : entityList) {
-            if (entity.customName() != null && name(entity).equalsIgnoreCase(INVALID_NAME)) {
+            if (entity.getPersistentDataContainer().has(LOADED_KEY)) {
                 continue;
             }
 
@@ -79,7 +80,7 @@ public class AnchorWorldSource implements AnchorSource {
                 }
             }
 
-            entity.customName(Component.text(INVALID_NAME));
+            entity.getPersistentDataContainer().set(LOADED_KEY, PersistentDataType.INTEGER, 1);
             entity.remove();
         }
 
@@ -90,10 +91,10 @@ public class AnchorWorldSource implements AnchorSource {
 
     private void loadAllInMemory(World world) {
         worldFindAll(world).stream()
-                .filter(entity -> !entity.getName().equals(INVALID_NAME))
+                .filter(entity -> !entity.getPersistentDataContainer().has(LOADED_KEY))
                 .forEach(entity -> {
                     Anchor anchor = createAnchorFromEntity(entity);
-                    Core.getPlugin().getLogger().info("[GAME-Anchor-AS] Stored " + anchor);
+                    Core.getPlugin().getLogger().info("[Anchor] Stored " + anchor);
 
                     if (!anchors.containsKey(anchor.key())) {
                         anchors.put(anchor.key(), new ArrayList<>());
@@ -118,11 +119,7 @@ public class AnchorWorldSource implements AnchorSource {
 
         // Remove #, split by spaces
         String[] split = string.substring(1).split(" ");
-
-        String key = split[0];
-        String[] args = Arrays.copyOfRange(split, 1, split.length);
-
-        return new Anchor(key, args, location);
+        return new Anchor(split[0], List.of(Arrays.copyOfRange(split, 1, split.length)), location);
     }
 
     private List<Entity> worldFindAll(World world) {

@@ -19,12 +19,9 @@ public class AnchorService {
 
     public static void unregisterWorld(World world) {
         Core.getPlugin().getLogger().info("[Anchor] Unregistering world " + world.getName());
-        new ArrayList<>(sources).stream()
-                .filter(source -> source instanceof AnchorWorldSource anchorWorldSource && world.equals(anchorWorldSource.getWorld()))
-                .forEach(AnchorService::removeSource);
+        sources.removeIf(source -> source instanceof AnchorWorldSource anchorWorldSource && world.equals(anchorWorldSource.getWorld()));
         Core.getPlugin().getLogger().info("[Anchor] Unregistered world " + world.getName());
     }
-
 
     public static Optional<Anchor> findOne(String key) {
         return sources.stream().map(anchorSource -> anchorSource.findOne(key)).findAny().orElse(Optional.empty());
